@@ -27,6 +27,7 @@ import cn.iocoder.yudao.module.system.enums.oauth2.OAuth2ClientConstants;
 import cn.iocoder.yudao.module.system.enums.sms.SmsSceneEnum;
 import cn.iocoder.yudao.module.system.enums.social.SocialTypeEnum;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,6 +79,34 @@ public class MemberAuthServiceImpl implements MemberAuthService {
 
     @Override
     @Transactional
+    public AppAuthLoginRespVO register(AppAuthRegisterReqVO reqVO) {
+        // 1. 校验手机号未被注册
+        if (userService.getUserByMobile(reqVO.getMobile()) != null) {
+            throw exception(AUTH_MOBILE_USED);
+        }
+
+        // 2. 创建用户（含密码）；并发注册同手机号时，由 uk_mobile 唯一索引兜底
+        MemberUserDO user;
+        try {
+            user = userService.registerUser(reqVO.getMobile(), reqVO.getPassword(),
+                    getClientIP(), getTerminal());
+        } catch (DuplicateKeyException e) {
+            throw exception(AUTH_MOBILE_USED);
+        }
+
+        // 如果 socialType 非空，说明需要绑定社交用户
+        String openid = null;
+        if (reqVO.getSocialType() != null) {
+            openid = socialUserApi.bindSocialUser(new SocialUserBindReqDTO(user.getId(), getUserType().getValue(),
+                    reqVO.getSocialType(), reqVO.getSocialCode(), reqVO.getSocialState()));
+        }
+
+        // 3. 创建 Token 令牌，记录登录日志
+        return createTokenAfterLoginSuccess(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_MOBILE, openid);
+    }
+
+    @Override
+    @Transactional
     public AppAuthLoginRespVO smsLogin(AppAuthSmsLoginReqVO reqVO) {
         // 校验验证码
         String userIp = getClientIP();
@@ -86,6 +115,12 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         // 获得获得注册用户
         MemberUserDO user = userService.createUserIfAbsent(reqVO.getMobile(), userIp, getTerminal());
         Assert.notNull(user, "获取用户失败，结果为空");
+
+        // 未验证的密码注册账号，不允许被短信登录收养：防止攻击者冒用他人手机号+密码注册，
+        // 之后真机主通过短信验证码登录时"接管"该账号，造成账号共享（CWE-287）
+        if (!Boolean.TRUE.equals(user.getMobileVerified())) {
+            throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
+        }
 
         // 校验是否禁用
         validateUserStatus(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_SMS);
@@ -143,6 +178,11 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         MemberUserDO user = userService.createUserIfAbsent(phoneNumberInfo.getPurePhoneNumber(),
                 getClientIP(), TerminalEnum.WECHAT_MINI_PROGRAM.getTerminal());
         Assert.notNull(user, "获取用户失败，结果为空");
+
+        // 未验证的密码注册账号，不允许被微信登录收养（同短信登录的账号接管防护）
+        if (!Boolean.TRUE.equals(user.getMobileVerified())) {
+            throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
+        }
         validateUserStatus(user, user.getMobile(), LoginLogTypeEnum.LOGIN_SOCIAL);
 
         // 绑定社交用户

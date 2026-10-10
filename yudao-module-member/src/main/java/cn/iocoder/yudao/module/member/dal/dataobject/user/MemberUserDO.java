@@ -145,5 +145,12 @@ public class MemberUserDO extends TenantBaseDO {
      * 关联 {@link MemberGroupDO#getId()} 字段
      */
     private Long groupId;
+    /**
+     * 手机号是否已验证
+     *
+     * 密码注册的账号为 false（未验证）；短信登录、微信小程序登录创建账号时置为 true。
+     * 未验证的账号不允许被短信/微信登录收养，防止冒名注册后账号被真机主通过验证码"接管"造成账号共享。
+     */
+    private Boolean mobileVerified;
 
 }
