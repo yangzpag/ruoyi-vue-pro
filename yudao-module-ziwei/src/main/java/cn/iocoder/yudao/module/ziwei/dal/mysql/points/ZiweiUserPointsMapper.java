@@ -21,18 +21,19 @@ public interface ZiweiUserPointsMapper extends BaseMapperX<ZiweiUserPointsDO> {
 
     /**
      * 原子懒创建（PostgreSQL）：ON CONFLICT DO NOTHING，并发下不抛唯一键异常
-     * （PG 中语句失败会中止整个事务，因此不能依赖 DuplicateKeyException 兜底）
+     * （PG 中语句失败会中止整个事务，因此不能依赖 DuplicateKeyException 兜底）。
+     * 返回 1 = 本次创建（新用户），0 = 记录已存在。
      */
     @Insert("INSERT INTO ziwei_user_points (member_user_id, balance, total_granted, total_consumed) "
-            + "VALUES (#{userId}, 0, 0, 0) ON CONFLICT (member_user_id, tenant_id) DO NOTHING")
-    int insertIgnoreByUserId(@Param("userId") Long userId);
+            + "VALUES (#{userId}, #{initialPoints}, #{initialPoints}, 0) ON CONFLICT (member_user_id, tenant_id) DO NOTHING")
+    int insertIgnoreByUserId(@Param("userId") Long userId, @Param("initialPoints") int initialPoints);
 
     /**
      * 原子懒创建（MySQL）：INSERT IGNORE，遇唯一键冲突时静默跳过
      */
     @Insert("INSERT IGNORE INTO ziwei_user_points (member_user_id, balance, total_granted, total_consumed) "
-            + "VALUES (#{userId}, 0, 0, 0)")
-    int insertIgnoreByUserIdMysql(@Param("userId") Long userId);
+            + "VALUES (#{userId}, #{initialPoints}, #{initialPoints}, 0)")
+    int insertIgnoreByUserIdMysql(@Param("userId") Long userId, @Param("initialPoints") int initialPoints);
 
     /**
      * 原子扣减：余额不足时返回 0（不更新）

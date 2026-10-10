@@ -32,6 +32,16 @@ import static cn.iocoder.yudao.module.ziwei.enums.ErrorCodeConstants.ZIWEI_POINT
 @Slf4j
 public class ZiweiPointsServiceImpl implements ZiweiPointsService {
 
+    /**
+     * 新用户默认赠送的 AI 解读次数（懒创建权益记录时一次性授予）
+     */
+    private static final int REGISTER_GRANT_POINTS = 100;
+
+    /**
+     * 注册赠送流水的业务号（唯一索引 (member_user_id, biz_no) 保证每用户仅一条）
+     */
+    private static final String REGISTER_GRANT_BIZ_NO = "REGISTER-GIFT";
+
     @Resource
     private ZiweiUserPointsMapper userPointsMapper;
     @Resource
@@ -40,17 +50,25 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
     private ZiweiDbDialect dbDialect;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ZiweiUserPointsDO getOrCreatePoints(Long userId) {
         ZiweiUserPointsDO points = userPointsMapper.selectByUserId(userId);
         if (points != null) {
             return points;
         }
         // 懒创建：原子插入防并发（PG 用 ON CONFLICT DO NOTHING；MySQL 用 INSERT IGNORE）。
-        // 不能依赖 DuplicateKeyException 兜底——PG 语句失败会中止整个事务，后续查询全部报错
+        // 不能依赖 DuplicateKeyException 兜底——PG 语句失败会中止整个事务，后续查询全部报错。
+        // 创建即授予默认额度（balance = total_granted = REGISTER_GRANT_POINTS）
+        int created;
         if (dbDialect.isPostgreSQL()) {
-            userPointsMapper.insertIgnoreByUserId(userId);
+            created = userPointsMapper.insertIgnoreByUserId(userId, REGISTER_GRANT_POINTS);
         } else {
-            userPointsMapper.insertIgnoreByUserIdMysql(userId);
+            created = userPointsMapper.insertIgnoreByUserIdMysql(userId, REGISTER_GRANT_POINTS);
+        }
+        if (created == 1) {
+            // 本次新建：写一条"注册赠送"流水（bizNo 唯一索引兜底，重复授予会被拦截）
+            insertLog(userId, ZiweiPointsChangeTypeEnum.GRANT.getType(), REGISTER_GRANT_POINTS,
+                    REGISTER_GRANT_POINTS, REGISTER_GRANT_BIZ_NO, "注册赠送");
         }
         return userPointsMapper.selectByUserId(userId);
     }
