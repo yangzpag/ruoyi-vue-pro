@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS ziwei_user_points (
   updater varchar(64) NULL DEFAULT '',
   update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted int2 NOT NULL DEFAULT 0,
+  CONSTRAINT pk_ziwei_user_points PRIMARY KEY (id),
   CONSTRAINT uk_ziwei_points_user UNIQUE (member_user_id, tenant_id)
 );
 COMMENT ON TABLE ziwei_user_points IS '用户AI解读次数权益表';
@@ -41,7 +42,8 @@ CREATE TABLE IF NOT EXISTS ziwei_points_log (
   create_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updater varchar(64) NULL DEFAULT '',
   update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted int2 NOT NULL DEFAULT 0
+  deleted int2 NOT NULL DEFAULT 0,
+  CONSTRAINT pk_ziwei_points_log PRIMARY KEY (id)
 );
 COMMENT ON TABLE ziwei_points_log IS '次数变动流水表';
 COMMENT ON COLUMN ziwei_points_log.change_type IS '变动类型：1购买/奖励 2解读消耗 3退款返还 4管理员调整';
@@ -66,7 +68,8 @@ CREATE TABLE IF NOT EXISTS ziwei_chart (
   create_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updater varchar(64) NULL DEFAULT '',
   update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted int2 NOT NULL DEFAULT 0
+  deleted int2 NOT NULL DEFAULT 0,
+  CONSTRAINT pk_ziwei_chart PRIMARY KEY (id)
 );
 COMMENT ON TABLE ziwei_chart IS '保存的命盘表';
 COMMENT ON COLUMN ziwei_chart.name IS '备注名（如 1990-05-09 男）';

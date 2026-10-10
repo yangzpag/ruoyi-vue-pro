@@ -2,9 +2,9 @@ package cn.iocoder.yudao.module.ziwei.controller.app.points;
 
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
-import cn.iocoder.yudao.module.ziwei.controller.app.points.vo.*;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import cn.iocoder.yudao.module.ziwei.controller.app.points.vo.AppZiweiPointsLogPageReqVO;
+import cn.iocoder.yudao.module.ziwei.controller.app.points.vo.AppZiweiPointsLogRespVO;
+import cn.iocoder.yudao.module.ziwei.controller.app.points.vo.AppZiweiPointsRespVO;
 import cn.iocoder.yudao.module.ziwei.dal.dataobject.points.ZiweiPointsLogDO;
 import cn.iocoder.yudao.module.ziwei.dal.dataobject.points.ZiweiUserPointsDO;
 import cn.iocoder.yudao.module.ziwei.service.points.ZiweiPointsService;
@@ -17,12 +17,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
-import javax.validation.Valid;
 
 import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
 import static cn.iocoder.yudao.framework.common.util.object.BeanUtils.toBean;
 import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
 
+/**
+ * 次数权益查询接口（面向最终用户，只读）。
+ *
+ * 写操作（consume/refund）在 {@link AppZiweiPointsInternalController}，
+ * 仅供 BFF 服务端携带内部密钥调用——不对最终用户开放，
+ * 防止用户在 AI 解读成功后自行退款绕过计费。
+ */
 @Tag(name = "用户 APP - 次数权益")
 @RestController
 @RequestMapping("/ziwei/points")
@@ -35,22 +41,6 @@ public class AppZiweiPointsController {
     @GetMapping("/get")
     @Operation(summary = "获得当前用户的次数权益")
     public CommonResult<AppZiweiPointsRespVO> getPoints() {
-        ZiweiUserPointsDO points = pointsService.getOrCreatePoints(getLoginUserId());
-        return success(toBean(points, AppZiweiPointsRespVO.class));
-    }
-
-    @PostMapping("/consume")
-    @Operation(summary = "消耗次数（AI 解读扣减，bizNo 幂等）")
-    public CommonResult<AppZiweiPointsRespVO> consumePoints(@Valid @RequestBody AppZiweiPointsConsumeReqVO reqVO) {
-        pointsService.consumePoints(getLoginUserId(), reqVO.getPoints(), reqVO.getBizNo(), reqVO.getRemark());
-        ZiweiUserPointsDO points = pointsService.getOrCreatePoints(getLoginUserId());
-        return success(toBean(points, AppZiweiPointsRespVO.class));
-    }
-
-    @PostMapping("/refund")
-    @Operation(summary = "退还次数（AI 解读失败退款，仅限本人真实消耗流水）")
-    public CommonResult<AppZiweiPointsRespVO> refundPoints(@Valid @RequestBody AppZiweiPointsRefundReqVO reqVO) {
-        pointsService.refundPoints(getLoginUserId(), reqVO.getBizNo(), reqVO.getRemark());
         ZiweiUserPointsDO points = pointsService.getOrCreatePoints(getLoginUserId());
         return success(toBean(points, AppZiweiPointsRespVO.class));
     }

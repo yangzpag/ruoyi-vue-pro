@@ -14,6 +14,8 @@ public interface ErrorCodeConstants {
     ErrorCode ZIWEI_POINTS_INVALID_AMOUNT = new ErrorCode(1_030_000_001, "次数变动量必须大于 0");
     ErrorCode ZIWEI_POINTS_BIZ_REPLAYED = new ErrorCode(1_030_000_002, "该业务已处理过，请刷新查看结果");
     ErrorCode ZIWEI_POINTS_REFUND_NO_CONSUME = new ErrorCode(1_030_000_003, "未找到对应的解读消费记录，无法退款");
+    ErrorCode ZIWEI_POINTS_BIZ_CONFLICT = new ErrorCode(1_030_000_004, "业务编号已被其他操作使用");
+    ErrorCode ZIWEI_INTERNAL_UNAUTHORIZED = new ErrorCode(1_030_000_005, "内部接口鉴权失败");
 
     // ========== 命盘 1_030_001_000 ==========
     ErrorCode ZIWEI_CHART_NOT_FOUND = new ErrorCode(1_030_001_000, "命盘不存在或已删除");

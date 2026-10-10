@@ -8,6 +8,7 @@ import cn.iocoder.yudao.module.ziwei.dal.dataobject.chart.ZiweiChartDO;
 import cn.iocoder.yudao.module.ziwei.dal.mysql.chart.ZiweiChartMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
@@ -33,14 +34,39 @@ public class ZiweiChartServiceImpl implements ZiweiChartService {
 
     @Resource
     private ZiweiChartMapper chartMapper;
+    @Resource
+    private javax.sql.DataSource dataSource;
+
+    /**
+     * 是否 PostgreSQL（决定 createChart 是否可用 advisory lock 串行化）
+     */
+    private boolean postgreSQL;
+
+    @javax.annotation.PostConstruct
+    void detectDialect() {
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            String product = conn.getMetaData().getDatabaseProductName();
+            postgreSQL = product != null && product.contains("PostgreSQL");
+        } catch (Exception e) {
+            log.warn("[ziwei] 数据库方言检测失败，默认按 PostgreSQL 处理", e);
+            postgreSQL = true;
+        }
+    }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long createChart(Long userId, AppZiweiChartCreateReqVO reqVO) {
-        // 1. 校验 JSON 可解析（防止存入垃圾数据导致回放失败）
-        if (!JSONUtil.isTypeJSON(reqVO.getChartData())) {
+        // 1. 校验 JSON 严格可解析（isTypeJSON 只看首尾括号，{broken} 也能通过）
+        try {
+            JSONUtil.parseObj(reqVO.getChartData());
+        } catch (Exception e) {
             throw exception(ZIWEI_CHART_DATA_INVALID);
         }
-        // 2. 校验数量上限
+        // 2. 数量上限：PG 用 advisory lock 对同一用户串行化，保证"查数量 + 插入"原子性
+        //    （否则 19 个时两个并发请求都能通过检查，突破 20 上限）；MySQL 部署需替换为 GET_LOCK
+        if (postgreSQL) {
+            chartMapper.advisoryXactLock(userId);
+        }
         if (chartMapper.selectCountByUserId(userId) >= CHART_LIMIT_PER_USER) {
             throw exception(ZIWEI_CHART_LIMIT);
         }

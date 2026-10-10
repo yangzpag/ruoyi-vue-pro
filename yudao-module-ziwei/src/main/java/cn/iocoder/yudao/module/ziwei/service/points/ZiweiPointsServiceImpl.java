@@ -14,9 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static cn.iocoder.yudao.module.ziwei.enums.ErrorCodeConstants.ZIWEI_POINTS_BIZ_CONFLICT;
 import static cn.iocoder.yudao.module.ziwei.enums.ErrorCodeConstants.ZIWEI_POINTS_BIZ_REPLAYED;
 import static cn.iocoder.yudao.module.ziwei.enums.ErrorCodeConstants.ZIWEI_POINTS_INSUFFICIENT;
 import static cn.iocoder.yudao.module.ziwei.enums.ErrorCodeConstants.ZIWEI_POINTS_INVALID_AMOUNT;
@@ -34,6 +38,29 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
     private ZiweiUserPointsMapper userPointsMapper;
     @Resource
     private ZiweiPointsLogMapper pointsLogMapper;
+    @Resource
+    private DataSource dataSource;
+
+    /**
+     * 当前数据库是否 PostgreSQL（决定懒创建用 ON CONFLICT 还是 INSERT IGNORE）
+     */
+    private boolean postgreSQL;
+
+    public ZiweiPointsServiceImpl() {
+    }
+
+    @javax.annotation.PostConstruct
+    void detectDialect() {
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData meta = conn.getMetaData();
+            String product = meta.getDatabaseProductName();
+            postgreSQL = product != null && product.contains("PostgreSQL");
+            log.info("[ziwei] 数据库方言检测: {} -> {}", product, postgreSQL ? "PostgreSQL" : "MySQL 系");
+        } catch (Exception e) {
+            log.warn("[ziwei] 数据库方言检测失败，默认按 PostgreSQL 处理", e);
+            postgreSQL = true;
+        }
+    }
 
     @Override
     public ZiweiUserPointsDO getOrCreatePoints(Long userId) {
@@ -41,9 +68,13 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
         if (points != null) {
             return points;
         }
-        // 懒创建：ON CONFLICT DO NOTHING 原子插入，PG 下并发安全（不能用 DuplicateKeyException
-        // 兜底——PG 语句失败会中止整个事务，后续查询全部报错）
-        userPointsMapper.insertIgnoreByUserId(userId);
+        // 懒创建：原子插入防并发（PG 用 ON CONFLICT DO NOTHING；MySQL 用 INSERT IGNORE）。
+        // 不能依赖 DuplicateKeyException 兜底——PG 语句失败会中止整个事务，后续查询全部报错
+        if (postgreSQL) {
+            userPointsMapper.insertIgnoreByUserId(userId);
+        } else {
+            userPointsMapper.insertIgnoreByUserIdMysql(userId);
+        }
         return userPointsMapper.selectByUserId(userId);
     }
 
@@ -58,8 +89,8 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
         if (points == null || points <= 0) {
             throw exception(ZIWEI_POINTS_INVALID_AMOUNT);
         }
-        if (isReplayed(userId, bizNo)) {
-            return; // 幂等：同一业务号已处理过，直接返回成功
+        if (isReplayed(userId, bizNo, changeType, points)) {
+            return; // 幂等：同一业务号的同一操作已处理过，直接返回成功
         }
         getOrCreatePoints(userId); // 确保权益记录存在
         userPointsMapper.addBalance(userId, points);
@@ -73,8 +104,8 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
         if (points == null || points <= 0) {
             throw exception(ZIWEI_POINTS_INVALID_AMOUNT);
         }
-        if (isReplayed(userId, bizNo)) {
-            return; // 幂等：同一业务号已处理过，直接返回成功
+        if (isReplayed(userId, bizNo, ZiweiPointsChangeTypeEnum.CONSUME.getType(), points)) {
+            return; // 幂等：同一业务号的同一操作已处理过，直接返回成功
         }
         getOrCreatePoints(userId); // 确保权益记录存在
         int updated = userPointsMapper.deductBalance(userId, points);
@@ -119,9 +150,30 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
         }
     }
 
-    private boolean isReplayed(Long userId, String bizNo) {
-        return bizNo != null && !bizNo.isEmpty()
-                && pointsLogMapper.selectByBizNo(userId, bizNo) != null;
+    /**
+     * 幂等预检：bizNo 已有流水时——
+     * 操作类型与变动量完全一致 → 视为重放，返回 true（调用方直接成功返回）；
+     * 类型或数量不同 → 属于不同请求复用了业务号，抛出 BIZ_CONFLICT 拒绝。
+     *
+     * @param userId          会员用户编号
+     * @param bizNo           业务编号
+     * @param expectedType    期望的操作类型
+     * @param expectedAbsPoints 期望的变动量（正数）
+     */
+    private boolean isReplayed(Long userId, String bizNo, Integer expectedType, Integer expectedAbsPoints) {
+        if (bizNo == null || bizNo.isEmpty()) {
+            return false;
+        }
+        ZiweiPointsLogDO existing = pointsLogMapper.selectByBizNo(userId, bizNo);
+        if (existing == null) {
+            return false;
+        }
+        boolean sameOperation = Objects.equals(existing.getChangeType(), expectedType)
+                && Objects.equals(Math.abs(existing.getPoints()), expectedAbsPoints);
+        if (!sameOperation) {
+            throw exception(ZIWEI_POINTS_BIZ_CONFLICT);
+        }
+        return true;
     }
 
 }
