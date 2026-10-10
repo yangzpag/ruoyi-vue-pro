@@ -58,13 +58,6 @@ public interface MemberUserService {
     MemberUserDO registerUser(@Mobile String mobile, String password, String registerIp, Integer terminal);
 
     /**
-     * 标记用户手机号已验证（短信/微信等验证渠道登录时）
-     *
-     * @param id 用户编号
-     */
-    void markMobileVerified(Long id);
-
-    /**
      * 创建用户
      * 目的：三方登录时，如果未绑定用户时，自动创建对应用户
      *

@@ -121,7 +121,6 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         if (!Boolean.TRUE.equals(user.getMobileVerified())) {
             throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
         }
-        userService.markMobileVerified(user.getId());
 
         // 校验是否禁用
         validateUserStatus(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_SMS);
@@ -184,7 +183,6 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         if (!Boolean.TRUE.equals(user.getMobileVerified())) {
             throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
         }
-        userService.markMobileVerified(user.getId());
         validateUserStatus(user, user.getMobile(), LoginLogTypeEnum.LOGIN_SOCIAL);
 
         // 绑定社交用户

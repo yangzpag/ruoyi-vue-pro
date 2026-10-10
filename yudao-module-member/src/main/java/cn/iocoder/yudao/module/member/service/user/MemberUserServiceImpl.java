@@ -132,11 +132,6 @@ public class MemberUserServiceImpl implements MemberUserService {
     }
 
     @Override
-    public void markMobileVerified(Long id) {
-        memberUserMapper.updateById(new MemberUserDO().setId(id).setMobileVerified(true));
-    }
-
-    @Override
     public void updateUserLogin(Long id, String loginIp) {
         memberUserMapper.updateById(new MemberUserDO().setId(id)
                 .setLoginIp(loginIp).setLoginDate(LocalDateTime.now()));
