@@ -78,29 +78,6 @@ public class MemberAuthServiceImpl implements MemberAuthService {
 
     @Override
     @Transactional
-    public AppAuthLoginRespVO register(AppAuthRegisterReqVO reqVO) {
-        // 1. 校验手机号未被注册
-        if (userService.getUserByMobile(reqVO.getMobile()) != null) {
-            throw exception(AUTH_MOBILE_USED);
-        }
-
-        // 2. 创建用户（含密码）
-        MemberUserDO user = userService.registerUser(reqVO.getMobile(), reqVO.getPassword(),
-                getClientIP(), getTerminal());
-
-        // 如果 socialType 非空，说明需要绑定社交用户
-        String openid = null;
-        if (reqVO.getSocialType() != null) {
-            openid = socialUserApi.bindSocialUser(new SocialUserBindReqDTO(user.getId(), getUserType().getValue(),
-                    reqVO.getSocialType(), reqVO.getSocialCode(), reqVO.getSocialState()));
-        }
-
-        // 3. 创建 Token 令牌，记录登录日志
-        return createTokenAfterLoginSuccess(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_MOBILE, openid);
-    }
-
-    @Override
-    @Transactional
     public AppAuthLoginRespVO smsLogin(AppAuthSmsLoginReqVO reqVO) {
         // 校验验证码
         String userIp = getClientIP();
