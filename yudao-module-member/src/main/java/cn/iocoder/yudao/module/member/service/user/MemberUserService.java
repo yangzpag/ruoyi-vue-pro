@@ -47,17 +47,6 @@ public interface MemberUserService {
     MemberUserDO createUserIfAbsent(@Mobile String mobile, String registerIp, Integer terminal);
 
     /**
-     * 基于手机号 + 密码注册用户
-     *
-     * @param mobile     手机号
-     * @param password   密码（明文，方法内部加密）
-     * @param registerIp 注册 IP
-     * @param terminal   终端 {@link TerminalEnum}
-     * @return 用户对象
-     */
-    MemberUserDO registerUser(@Mobile String mobile, String password, String registerIp, Integer terminal);
-
-    /**
      * 创建用户
      * 目的：三方登录时，如果未绑定用户时，自动创建对应用户
      *

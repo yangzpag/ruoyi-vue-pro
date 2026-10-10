@@ -33,17 +33,11 @@
         </dependency>
 
         <!-- 会员中心。默认注释，保证编译速度 -->
-        <dependency>
-            <groupId>cn.iocoder.boot</groupId>
-            <artifactId>yudao-module-member</artifactId>
-            <version>${revision}</version>
-        </dependency>
-
-        <!-- PostgreSQL 驱动（统一 PG 部署），版本由 spring-boot-dependencies 管理 -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-module-member</artifactId>-->
+<!--            <version>${revision}</version>-->
+<!--        </dependency>-->
 
         <!-- 数据报表。默认注释，保证编译速度 -->
 <!--        <dependency>-->
