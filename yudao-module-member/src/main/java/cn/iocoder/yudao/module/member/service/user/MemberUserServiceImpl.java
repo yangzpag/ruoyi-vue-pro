@@ -94,10 +94,21 @@ public class MemberUserServiceImpl implements MemberUserService {
         return createUser(null, nickname, avtar, registerIp, terminal);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MemberUserDO registerUser(String mobile, String password, String registerIp, Integer terminal) {
+        return createUser(mobile, null, null, registerIp, terminal, password);
+    }
+
     private MemberUserDO createUser(String mobile, String nickname, String avtar,
                                     String registerIp, Integer terminal) {
         // 生成密码
         String password = IdUtil.fastSimpleUUID();
+        return createUser(mobile, nickname, avtar, registerIp, terminal, password);
+    }
+
+    private MemberUserDO createUser(String mobile, String nickname, String avtar,
+                                    String registerIp, Integer terminal, String password) {
         // 插入用户
         MemberUserDO user = new MemberUserDO();
         user.setMobile(mobile);
