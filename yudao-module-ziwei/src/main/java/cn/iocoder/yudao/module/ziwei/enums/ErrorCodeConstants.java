@@ -12,5 +12,6 @@ public interface ErrorCodeConstants {
     // ========== 次数权益 1_030_000_000 ==========
     ErrorCode ZIWEI_POINTS_INSUFFICIENT = new ErrorCode(1_030_000_000, "AI 解读次数不足");
     ErrorCode ZIWEI_POINTS_INVALID_AMOUNT = new ErrorCode(1_030_000_001, "次数变动量必须大于 0");
+    ErrorCode ZIWEI_POINTS_BIZ_REPLAYED = new ErrorCode(1_030_000_002, "该业务已处理过，请刷新查看结果");
 
 }

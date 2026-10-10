@@ -13,6 +13,13 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface ZiweiPointsLogMapper extends BaseMapperX<ZiweiPointsLogDO> {
 
+    default ZiweiPointsLogDO selectByBizNo(Long userId, String bizNo) {
+        return selectOne(new LambdaQueryWrapperX<ZiweiPointsLogDO>()
+                .eq(ZiweiPointsLogDO::getMemberUserId, userId)
+                .eq(ZiweiPointsLogDO::getBizNo, bizNo)
+                .last("LIMIT 1"));
+    }
+
     default PageResult<ZiweiPointsLogDO> selectPageByUserId(Long userId, AppZiweiPointsLogPageReqVO pageReq) {
         return selectPage(pageReq, new LambdaQueryWrapperX<ZiweiPointsLogDO>()
                 .eq(ZiweiPointsLogDO::getMemberUserId, userId)
