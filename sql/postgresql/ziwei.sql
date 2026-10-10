@@ -53,3 +53,23 @@ CREATE INDEX IF NOT EXISTS idx_ziwei_points_log_user ON ziwei_points_log (member
 
 -- 3. 幂等保护：同一用户同一业务号只允许一条有效流水（空 biz_no 不参与）
 CREATE UNIQUE INDEX IF NOT EXISTS uk_ziwei_points_log_biz ON ziwei_points_log (member_user_id, biz_no) WHERE deleted = 0 AND biz_no <> '';
+
+-- 4. 保存的命盘表
+CREATE SEQUENCE IF NOT EXISTS ziwei_chart_seq START 1;
+CREATE TABLE IF NOT EXISTS ziwei_chart (
+  id int8 NOT NULL DEFAULT nextval('ziwei_chart_seq'),
+  member_user_id int8 NOT NULL,
+  name varchar(32) NOT NULL,
+  chart_data text NOT NULL,
+  tenant_id int8 NOT NULL DEFAULT 0,
+  creator varchar(64) NULL DEFAULT '',
+  create_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updater varchar(64) NULL DEFAULT '',
+  update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted int2 NOT NULL DEFAULT 0
+);
+COMMENT ON TABLE ziwei_chart IS '保存的命盘表';
+COMMENT ON COLUMN ziwei_chart.name IS '备注名（如 1990-05-09 男）';
+COMMENT ON COLUMN ziwei_chart.chart_data IS '排盘引擎输出的完整 JSON（前端反序列化回放）';
+
+CREATE INDEX IF NOT EXISTS idx_ziwei_chart_user ON ziwei_chart (member_user_id, create_time);

@@ -45,3 +45,19 @@ CREATE TABLE IF NOT EXISTS `ziwei_points_log`  (
   UNIQUE KEY `uk_ziwei_points_log_biz` (`member_user_id`, `active_biz_no`) USING BTREE,
   INDEX `idx_ziwei_points_log_user`(`member_user_id`, `create_time`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '次数变动流水表';
+
+-- 3. 保存的命盘表
+CREATE TABLE IF NOT EXISTS `ziwei_chart`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '编号',
+  `member_user_id` bigint NOT NULL COMMENT '会员用户编号',
+  `name` varchar(32) NOT NULL COMMENT '备注名（如 1990-05-09 男）',
+  `chart_data` mediumtext NOT NULL COMMENT '排盘引擎输出的完整 JSON（前端反序列化回放）',
+  `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
+  `creator` varchar(64) NULL DEFAULT '' COMMENT '创建者',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updater` varchar(64) NULL DEFAULT '' COMMENT '更新者',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ziwei_chart_user`(`member_user_id`, `create_time`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '保存的命盘表';
