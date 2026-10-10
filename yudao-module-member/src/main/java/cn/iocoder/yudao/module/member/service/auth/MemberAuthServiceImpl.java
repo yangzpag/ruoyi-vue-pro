@@ -27,6 +27,7 @@ import cn.iocoder.yudao.module.system.enums.oauth2.OAuth2ClientConstants;
 import cn.iocoder.yudao.module.system.enums.sms.SmsSceneEnum;
 import cn.iocoder.yudao.module.system.enums.social.SocialTypeEnum;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,9 +85,14 @@ public class MemberAuthServiceImpl implements MemberAuthService {
             throw exception(AUTH_MOBILE_USED);
         }
 
-        // 2. 创建用户（含密码）
-        MemberUserDO user = userService.registerUser(reqVO.getMobile(), reqVO.getPassword(),
-                getClientIP(), getTerminal());
+        // 2. 创建用户（含密码）；并发注册同手机号时，由 uk_mobile 唯一索引兜底
+        MemberUserDO user;
+        try {
+            user = userService.registerUser(reqVO.getMobile(), reqVO.getPassword(),
+                    getClientIP(), getTerminal());
+        } catch (DuplicateKeyException e) {
+            throw exception(AUTH_MOBILE_USED);
+        }
 
         // 如果 socialType 非空，说明需要绑定社交用户
         String openid = null;
