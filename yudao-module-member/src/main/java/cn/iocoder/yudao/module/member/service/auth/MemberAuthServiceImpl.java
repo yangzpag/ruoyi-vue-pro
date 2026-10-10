@@ -116,6 +116,13 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         MemberUserDO user = userService.createUserIfAbsent(reqVO.getMobile(), userIp, getTerminal());
         Assert.notNull(user, "获取用户失败，结果为空");
 
+        // 未验证的密码注册账号，不允许被短信登录收养：防止攻击者冒用他人手机号+密码注册，
+        // 之后真机主通过短信验证码登录时"接管"该账号，造成账号共享（CWE-287）
+        if (!Boolean.TRUE.equals(user.getMobileVerified())) {
+            throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
+        }
+        userService.markMobileVerified(user.getId());
+
         // 校验是否禁用
         validateUserStatus(user, reqVO.getMobile(), LoginLogTypeEnum.LOGIN_SMS);
 
@@ -172,6 +179,12 @@ public class MemberAuthServiceImpl implements MemberAuthService {
         MemberUserDO user = userService.createUserIfAbsent(phoneNumberInfo.getPurePhoneNumber(),
                 getClientIP(), TerminalEnum.WECHAT_MINI_PROGRAM.getTerminal());
         Assert.notNull(user, "获取用户失败，结果为空");
+
+        // 未验证的密码注册账号，不允许被微信登录收养（同短信登录的账号接管防护）
+        if (!Boolean.TRUE.equals(user.getMobileVerified())) {
+            throw exception(AUTH_MOBILE_PASSWORD_OCCUPIED);
+        }
+        userService.markMobileVerified(user.getId());
         validateUserStatus(user, user.getMobile(), LoginLogTypeEnum.LOGIN_SOCIAL);
 
         // 绑定社交用户
