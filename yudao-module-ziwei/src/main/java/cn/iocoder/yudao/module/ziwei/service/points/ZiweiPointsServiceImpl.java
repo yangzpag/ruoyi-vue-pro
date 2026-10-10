@@ -8,15 +8,13 @@ import cn.iocoder.yudao.module.ziwei.dal.dataobject.points.ZiweiUserPointsDO;
 import cn.iocoder.yudao.module.ziwei.dal.mysql.points.ZiweiPointsLogMapper;
 import cn.iocoder.yudao.module.ziwei.dal.mysql.points.ZiweiUserPointsMapper;
 import cn.iocoder.yudao.module.ziwei.enums.points.ZiweiPointsChangeTypeEnum;
+import cn.iocoder.yudao.module.ziwei.framework.db.ZiweiDbDialect;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.util.Objects;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -39,28 +37,7 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
     @Resource
     private ZiweiPointsLogMapper pointsLogMapper;
     @Resource
-    private DataSource dataSource;
-
-    /**
-     * 当前数据库是否 PostgreSQL（决定懒创建用 ON CONFLICT 还是 INSERT IGNORE）
-     */
-    private boolean postgreSQL;
-
-    public ZiweiPointsServiceImpl() {
-    }
-
-    @javax.annotation.PostConstruct
-    void detectDialect() {
-        try (Connection conn = dataSource.getConnection()) {
-            DatabaseMetaData meta = conn.getMetaData();
-            String product = meta.getDatabaseProductName();
-            postgreSQL = product != null && product.contains("PostgreSQL");
-            log.info("[ziwei] 数据库方言检测: {} -> {}", product, postgreSQL ? "PostgreSQL" : "MySQL 系");
-        } catch (Exception e) {
-            log.warn("[ziwei] 数据库方言检测失败，默认按 PostgreSQL 处理", e);
-            postgreSQL = true;
-        }
-    }
+    private ZiweiDbDialect dbDialect;
 
     @Override
     public ZiweiUserPointsDO getOrCreatePoints(Long userId) {
@@ -70,7 +47,7 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
         }
         // 懒创建：原子插入防并发（PG 用 ON CONFLICT DO NOTHING；MySQL 用 INSERT IGNORE）。
         // 不能依赖 DuplicateKeyException 兜底——PG 语句失败会中止整个事务，后续查询全部报错
-        if (postgreSQL) {
+        if (dbDialect.isPostgreSQL()) {
             userPointsMapper.insertIgnoreByUserId(userId);
         } else {
             userPointsMapper.insertIgnoreByUserIdMysql(userId);

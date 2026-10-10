@@ -61,3 +61,18 @@ CREATE TABLE IF NOT EXISTS `ziwei_chart`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_ziwei_chart_user`(`member_user_id`, `create_time`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '保存的命盘表';
+
+-- 3. 命盘配额表：每用户一行，used 计数原子 UPDATE 保证 20 上限
+CREATE TABLE IF NOT EXISTS `ziwei_chart_quota`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '编号',
+  `member_user_id` bigint NOT NULL COMMENT '会员用户编号',
+  `used` int NOT NULL DEFAULT 0 COMMENT '已使用配额（当前命盘数）',
+  `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
+  `creator` varchar(64) NULL DEFAULT '' COMMENT '创建者',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updater` varchar(64) NULL DEFAULT '' COMMENT '更新者',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_ziwei_chart_quota_user` (`member_user_id`, `tenant_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '命盘保存配额表';

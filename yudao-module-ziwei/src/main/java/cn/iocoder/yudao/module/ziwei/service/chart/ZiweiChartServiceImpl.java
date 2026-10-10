@@ -6,6 +6,8 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.ziwei.controller.app.chart.vo.AppZiweiChartCreateReqVO;
 import cn.iocoder.yudao.module.ziwei.dal.dataobject.chart.ZiweiChartDO;
 import cn.iocoder.yudao.module.ziwei.dal.mysql.chart.ZiweiChartMapper;
+import cn.iocoder.yudao.module.ziwei.dal.mysql.chart.ZiweiChartQuotaMapper;
+import cn.iocoder.yudao.module.ziwei.framework.db.ZiweiDbDialect;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,23 +37,9 @@ public class ZiweiChartServiceImpl implements ZiweiChartService {
     @Resource
     private ZiweiChartMapper chartMapper;
     @Resource
-    private javax.sql.DataSource dataSource;
-
-    /**
-     * 是否 PostgreSQL（决定 createChart 是否可用 advisory lock 串行化）
-     */
-    private boolean postgreSQL;
-
-    @javax.annotation.PostConstruct
-    void detectDialect() {
-        try (java.sql.Connection conn = dataSource.getConnection()) {
-            String product = conn.getMetaData().getDatabaseProductName();
-            postgreSQL = product != null && product.contains("PostgreSQL");
-        } catch (Exception e) {
-            log.warn("[ziwei] 数据库方言检测失败，默认按 PostgreSQL 处理", e);
-            postgreSQL = true;
-        }
-    }
+    private ZiweiChartQuotaMapper quotaMapper;
+    @Resource
+    private ZiweiDbDialect dbDialect;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -62,12 +50,14 @@ public class ZiweiChartServiceImpl implements ZiweiChartService {
         } catch (Exception e) {
             throw exception(ZIWEI_CHART_DATA_INVALID);
         }
-        // 2. 数量上限：PG 用 advisory lock 对同一用户串行化，保证"查数量 + 插入"原子性
-        //    （否则 19 个时两个并发请求都能通过检查，突破 20 上限）；MySQL 部署需替换为 GET_LOCK
-        if (postgreSQL) {
-            chartMapper.advisoryXactLock(userId);
+        // 2. 原子占用配额：quota 懒创建 + 原子 UPDATE（used < 上限 才生效），
+        //    跨方言严格保证 20 上限（并发下第二个请求 acquire 失败）
+        if (dbDialect.isPostgreSQL()) {
+            quotaMapper.insertIgnoreByUserId(userId);
+        } else {
+            quotaMapper.insertIgnoreByUserIdMysql(userId);
         }
-        if (chartMapper.selectCountByUserId(userId) >= CHART_LIMIT_PER_USER) {
+        if (quotaMapper.acquireQuota(userId, CHART_LIMIT_PER_USER) == 0) {
             throw exception(ZIWEI_CHART_LIMIT);
         }
         // 3. 插入
@@ -94,12 +84,15 @@ public class ZiweiChartServiceImpl implements ZiweiChartService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteChart(Long userId, Long id) {
         ZiweiChartDO chart = chartMapper.selectById(id);
         if (chart == null || !Objects.equals(chart.getMemberUserId(), userId)) {
             throw exception(ZIWEI_CHART_NOT_FOUND);
         }
         chartMapper.deleteById(id);
+        // 释放配额（同一事务：删除失败回滚时配额也回滚）
+        quotaMapper.releaseQuota(userId);
     }
 
 }

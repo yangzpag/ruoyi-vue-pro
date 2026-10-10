@@ -70,7 +70,10 @@ public class AppZiweiPointsInternalController {
     }
 
     private void checkKey(String key) {
-        if (internalKey == null || internalKey.isEmpty() || !internalKey.equals(key)) {
+        if (internalKey == null || internalKey.isEmpty() || key == null || key.isEmpty()
+                || !java.security.MessageDigest.isEqual(
+                        internalKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        key.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             throw exception(ZIWEI_INTERNAL_UNAUTHORIZED);
         }
     }

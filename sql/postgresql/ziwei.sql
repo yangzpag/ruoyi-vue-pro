@@ -76,3 +76,20 @@ COMMENT ON COLUMN ziwei_chart.name IS '备注名（如 1990-05-09 男）';
 COMMENT ON COLUMN ziwei_chart.chart_data IS '排盘引擎输出的完整 JSON（前端反序列化回放）';
 
 CREATE INDEX IF NOT EXISTS idx_ziwei_chart_user ON ziwei_chart (member_user_id, create_time);
+
+-- 5. 命盘配额表：每用户一行，used 计数原子 UPDATE 保证 20 上限跨方言严格成立
+CREATE SEQUENCE IF NOT EXISTS ziwei_chart_quota_seq START 1;
+CREATE TABLE IF NOT EXISTS ziwei_chart_quota (
+  id int8 NOT NULL DEFAULT nextval('ziwei_chart_quota_seq'),
+  member_user_id int8 NOT NULL,
+  used int4 NOT NULL DEFAULT 0,
+  tenant_id int8 NOT NULL DEFAULT 0,
+  creator varchar(64) NULL DEFAULT '',
+  create_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updater varchar(64) NULL DEFAULT '',
+  update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted int2 NOT NULL DEFAULT 0,
+  CONSTRAINT pk_ziwei_chart_quota PRIMARY KEY (id),
+  CONSTRAINT uk_ziwei_chart_quota_user UNIQUE (member_user_id, tenant_id)
+);
+COMMENT ON TABLE ziwei_chart_quota IS '命盘保存配额表（used=已用配额）';
