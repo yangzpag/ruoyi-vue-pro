@@ -84,31 +84,27 @@ public class MemberUserServiceImpl implements MemberUserService {
         if (user != null) {
             return user;
         }
-        // 用户不存在，则进行创建
-        return createUser(mobile, null, null, registerIp, terminal);
+        // 用户不存在，则进行创建（短信/微信等验证渠道创建的账号，手机号视为已验证）
+        return createUser(mobile, null, null, registerIp, terminal, IdUtil.fastSimpleUUID(), true);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MemberUserDO createUser(String nickname, String avtar, String registerIp, Integer terminal) {
-        return createUser(null, nickname, avtar, registerIp, terminal);
+        // 社交登录创建的用户：mobile 为空，mobileVerified 取 true（无手机号场景该标记不参与校验）
+        return createUser(null, nickname, avtar, registerIp, terminal, IdUtil.fastSimpleUUID(), true);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MemberUserDO registerUser(String mobile, String password, String registerIp, Integer terminal) {
-        return createUser(mobile, null, null, registerIp, terminal, password);
+        // 密码注册的账号：手机号未验证
+        return createUser(mobile, null, null, registerIp, terminal, password, false);
     }
 
     private MemberUserDO createUser(String mobile, String nickname, String avtar,
-                                    String registerIp, Integer terminal) {
-        // 生成密码
-        String password = IdUtil.fastSimpleUUID();
-        return createUser(mobile, nickname, avtar, registerIp, terminal, password);
-    }
-
-    private MemberUserDO createUser(String mobile, String nickname, String avtar,
-                                    String registerIp, Integer terminal, String password) {
+                                    String registerIp, Integer terminal, String password,
+                                    boolean mobileVerified) {
         // 插入用户
         MemberUserDO user = new MemberUserDO();
         user.setMobile(mobile);
@@ -116,6 +112,7 @@ public class MemberUserServiceImpl implements MemberUserService {
         user.setPassword(encodePassword(password)); // 加密密码
         user.setRegisterIp(registerIp).setRegisterTerminal(terminal);
         user.setNickname(nickname).setAvatar(avtar); // 基础信息
+        user.setMobileVerified(mobileVerified); // 手机号验证标记（见 MemberUserDO 注释）
         if (StrUtil.isEmpty(nickname)) {
             // 昵称为空时，随机一个名字，避免一些依赖 nickname 的逻辑报错，或者有点丑。例如说，短信发送有昵称时~
             user.setNickname("用户" + RandomUtil.randomNumbers(6));
