@@ -48,4 +48,17 @@ public interface ZiweiPointsService {
      */
     void consumePoints(Long userId, Integer points, String bizNo, String remark);
 
+    /**
+     * 退还次数（AI 解读失败退款）：按原消耗流水的业务号退还
+     *
+     * 安全性：只能退还本人真实存在的一次 CONSUME 流水；同一业务号只能退还一次
+     *（退款流水 bizNo = 原 bizNo + ":refund"，幂等锁复用唯一索引）。
+     * 因此公开接口不会成为凭空加次数的入口。
+     *
+     * @param userId 会员用户编号
+     * @param originalBizNo 原消耗流水业务号
+     * @param remark 备注
+     */
+    void refundPoints(Long userId, String originalBizNo, String remark);
+
 }
