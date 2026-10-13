@@ -90,9 +90,12 @@ public class ZiweiChartServiceImpl implements ZiweiChartService {
         if (chart == null || !Objects.equals(chart.getMemberUserId(), userId)) {
             throw exception(ZIWEI_CHART_NOT_FOUND);
         }
-        chartMapper.deleteById(id);
-        // 释放配额（同一事务：删除失败回滚时配额也回滚）
-        quotaMapper.releaseQuota(userId);
+        int deleted = chartMapper.deleteById(id);
+        // 仅在本次确有删除时才释放配额：并发重复删除（第二方 deleteById 命中 0 行）
+        // 不能重复 release，否则配额虚低会突破 20 上限
+        if (deleted > 0) {
+            quotaMapper.releaseQuota(userId);
+        }
     }
 
 }

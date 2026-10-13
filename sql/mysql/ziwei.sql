@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `ziwei_points_log`  (
   `change_type` tinyint NOT NULL COMMENT '变动类型：1购买/奖励 2解读消耗 3退款返还 4管理员调整',
   `points` int NOT NULL COMMENT '变动次数（正负数）',
   `balance_after` int NOT NULL COMMENT '变动后余额',
-  `biz_no` varchar(64) NULL DEFAULT '' COMMENT '关联业务编号（如支付订单号），用于幂等去重',
+  `biz_no` varchar(80) NULL DEFAULT '' COMMENT '关联业务编号（如支付订单号），用于幂等去重',
   `remark` varchar(255) NULL DEFAULT '' COMMENT '备注',
   `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
   `creator` varchar(64) NULL DEFAULT '' COMMENT '创建者',
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `ziwei_points_log`  (
   `updater` varchar(64) NULL DEFAULT '' COMMENT '更新者',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
-  `active_biz_no` varchar(64) GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' AND `biz_no` <> '' THEN `biz_no` ELSE NULL END) VIRTUAL COMMENT '有效业务编号，用于幂等去重',
+  `active_biz_no` varchar(80) GENERATED ALWAYS AS (CASE WHEN `deleted` = b'0' AND `biz_no` <> '' THEN `biz_no` ELSE NULL END) VIRTUAL COMMENT '有效业务编号，用于幂等去重',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_ziwei_points_log_biz` (`member_user_id`, `active_biz_no`) USING BTREE,
   INDEX `idx_ziwei_points_log_user`(`member_user_id`, `create_time`) USING BTREE

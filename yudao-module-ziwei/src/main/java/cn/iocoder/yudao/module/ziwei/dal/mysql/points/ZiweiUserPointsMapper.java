@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.ziwei.dal.dataobject.points.ZiweiUserPointsDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
@@ -18,6 +19,14 @@ public interface ZiweiUserPointsMapper extends BaseMapperX<ZiweiUserPointsDO> {
         return selectOne(new LambdaQueryWrapperX<ZiweiUserPointsDO>()
                 .eq(ZiweiUserPointsDO::getMemberUserId, userId));
     }
+
+    /**
+     * 当前读（FOR UPDATE）：懒创建竞态失败后的 re-select 必须绕过
+     * MySQL REPEATABLE READ 的旧快照，否则会读到 null 导致 NPE。
+     * PG 语义一致（当前读 + 行锁，单语句事务下同样安全）。
+     */
+    @Select("SELECT * FROM ziwei_user_points WHERE member_user_id = #{userId} AND deleted = 0 FOR UPDATE")
+    ZiweiUserPointsDO selectByUserIdForUpdate(@Param("userId") Long userId);
 
     /**
      * 原子懒创建（PostgreSQL）：ON CONFLICT DO NOTHING，并发下不抛唯一键异常

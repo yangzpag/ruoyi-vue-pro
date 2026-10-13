@@ -70,7 +70,8 @@ public class ZiweiPointsServiceImpl implements ZiweiPointsService {
             insertLog(userId, ZiweiPointsChangeTypeEnum.GRANT.getType(), REGISTER_GRANT_POINTS,
                     REGISTER_GRANT_POINTS, REGISTER_GRANT_BIZ_NO, "注册赠送");
         }
-        return userPointsMapper.selectByUserId(userId);
+        // 当前读（FOR UPDATE）：绕过 MySQL REPEATABLE READ 快照，确保拿到并发事务刚插入的行
+        return userPointsMapper.selectByUserIdForUpdate(userId);
     }
 
     @Override

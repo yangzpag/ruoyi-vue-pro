@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS ziwei_points_log (
   change_type int2 NOT NULL,
   points int4 NOT NULL,
   balance_after int4 NOT NULL,
-  biz_no varchar(64) NULL DEFAULT '',
+  biz_no varchar(80) NULL DEFAULT '',
   remark varchar(255) NULL DEFAULT '',
   tenant_id int8 NOT NULL DEFAULT 0,
   creator varchar(64) NULL DEFAULT '',
