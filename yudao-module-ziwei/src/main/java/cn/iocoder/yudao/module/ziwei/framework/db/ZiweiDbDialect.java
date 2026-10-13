@@ -26,12 +26,17 @@ public class ZiweiDbDialect {
 
     @PostConstruct
     void detect() {
+        // 方言决定懒创建 SQL（ON CONFLICT vs INSERT IGNORE）：检测失败必须终止启动——
+        // 静默降级可能让 MySQL 误用 PG 语法（或反之），错误在业务请求时才暴露且难以排查
         try (Connection conn = dataSource.getConnection()) {
             String product = conn.getMetaData().getDatabaseProductName();
-            postgreSQL = product != null && product.contains("PostgreSQL");
+            if (product == null || (!product.contains("PostgreSQL") && !product.contains("MySQL"))) {
+                throw new IllegalStateException("不支持的数据库产品: " + product);
+            }
+            postgreSQL = product.contains("PostgreSQL");
             log.info("[ziwei] 数据库方言: {} -> {}", product, isPostgreSQL() ? "PostgreSQL" : "MySQL 系");
         } catch (Exception e) {
-            log.warn("[ziwei] 数据库方言检测失败，默认按 PostgreSQL 处理", e);
+            throw new IllegalStateException("[ziwei] 数据库方言检测失败，拒绝启动（懒创建 SQL 依赖方言分支）", e);
         }
     }
 
